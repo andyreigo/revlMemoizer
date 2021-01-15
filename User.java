@@ -10,17 +10,20 @@ public class User {
     private ExecutorService executor = Executors.newSingleThreadExecutor();
     // functions to memoize definition
     Function<String, Future> findUser = this::getToken;
-    Function<String, Future> findUserM = new Memoizer(3,EvictionPolicyConstants.fifo).doMemoize(findUser);
+    Function<String, Future> findUserM = new Memoizer(3,Memoizer.fifo).doMemoize(findUser);
 
     // add unit test
     public static void main(String[] args) throws InterruptedException, ExecutionException {
         User user=new User();
-        Future<String> futures=user.findUserM.apply("andy");
+        Future<String> future1=user.findUserM.apply("andy");
+        Future<String> future2=user.findUserM.apply("john");
+        Future<String> future3=user.findUserM.apply("john");
+        Future<String> future4=user.findUserM.apply("john");
         long startTime = System.currentTimeMillis();
-        String token1=futures.get();
+        String token1=future1.get();
         long time1 = System.currentTimeMillis() - startTime;
         startTime = System.currentTimeMillis();
-        String token2=futures.get();
+        String token2=future1.get();
         long time2 = System.currentTimeMillis() - startTime;
         System.out.println(token1);
         System.out.println(token2);
