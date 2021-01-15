@@ -1,30 +1,24 @@
-import java.util.Collection;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.Map;
-import java.util.Stack;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.*;
+import java.util.concurrent.*;
 import java.util.function.Function;
-import java.util.stream.Collector;
-
-import javax.swing.text.MaskFormatter;
 
 // class is generic so it can accept any type of function and parameters
-public class Memoizer<Key,Data> {
+abstract public class Memoizer<Key,Data>  {
 
+    // have the constants for the remove policies
     public static final String fifo="FIFO";
     public static final String lfu="LFU";
     public static final String lru="LRU";
-
-    // control the memory size of the cache 
+    // control the memory size of the cache when creating it
     private  int maxSize=0;
+    // add the policy 
     private  String removePolicy="";
 
-    // use a concurrent hashmap as the data structure
+    // use a concurrent hashmap as it is more safe for asynchronous calls
   Map<Key, Data> cache = new ConcurrentHashMap<>();
-  LinkedHashSet<Key> queue = new LinkedHashSet<Key>();
-  Stack<Key> stack = new Stack<>();
+  Stack<Key> fifoStack=new Stack<>();
+  Queue<Key> queue= new LinkedList<>();
+//   Map<Key, Future<Data>> futureCache = new ConcurrentHashMap<>();  tried to implement but didnt understand it enough
 
   public Memoizer(){
   }
@@ -33,30 +27,54 @@ public class Memoizer<Key,Data> {
       this.maxSize=maxSize;
       this.removePolicy=removePolicy;
   }
+
+  public Map<Key, Data> getCache(){
+      return cache;
+  }
   
        // change to aynchronous
-   Function<Key, Data> doMemoize( Function<Key, Data> function) {
-       if(cache.size()==maxSize){
-           removePolicy();
-       }
-    return input -> cache.computeIfAbsent(input, function::apply);
+   Function<Key, Data> doMemoize( Function<Key, Data> function){
+        return (key)-> key!=null?cache.computeIfAbsent(key, function):null;
   }
 
-  private void removePolicy(){
-       
-    // create constants somewhere so to remove values 
+  private void removeLRU(){
+      // TODO this works like the stack
+     Key key=queue.poll();
+     cache.remove(key);
+  }
+
+  private void removeLFU(){
+// TODO implementation 
+  }
+
+  private void removeFIFO(){
+    Key key= fifoStack.pop();
+    cache.remove(key);
+  }
+
+  public void add(Key key){
+      remove();
+    if(this.removePolicy.toUpperCase().equals("FIFO")){
+           fifoStack.add(key);
+       }
+        else{
+          queue.add(key);
+     }
+     
+  }
+
+  public void remove(){    
+     /* remove from the hashmap if the size is equal to the maxsize
+     based on the remove policy call the correspoding method
+     */
+    if(cache.size()==(maxSize)){
       if(this.removePolicy.toUpperCase().equals("LRU")){
-           
+           removeLRU();
       }else if(this.removePolicy.toUpperCase().equals("LFU")){
-      
+           removeLFU();
       }else if(this.removePolicy.toUpperCase().equals("FIFO")){
+          removeFIFO();
     }
   }
-
-  
-/* memory management  
-    it should accept various eviction policies options to swap out LRU(remove using timestamp),LFU,FIFO(stack pop ) */
-  
-
-
+}
 }
